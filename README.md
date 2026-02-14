@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img src="https://www.berlinale.de/media/images/berlinale_logo_2025.original.svg" alt="Berlinale" height="28"> Berlinale Ticket Buyer
+# 🎬 Berlinale Ticket Buyer
 
 **Automated ticket sniper for the Berlin International Film Festival**
 
