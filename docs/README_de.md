@@ -4,6 +4,7 @@
 
 **Automatisches Ticket-Tool f&uuml;r die Internationalen Filmfestspiele Berlin**
 
+[![GitHub stars](https://img.shields.io/github/stars/Rswcf/berlinale-ticket-buyer?style=flat-square)](https://github.com/Rswcf/berlinale-ticket-buyer/stargazers)
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat-square&logo=playwright&logoColor=white)](https://playwright.dev)
