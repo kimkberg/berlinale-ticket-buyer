@@ -20,42 +20,80 @@ import { CTAScene } from "./scenes/CTAScene";
 export const BerlinaleDemo = () => {
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Volume curve for background music:
-  // 0-2s:   Fade in (0 → 0.3)
-  // 2-35s:  Steady at 0.3
-  // 35-48s: Build tension during grab + watch (0.3 → 0.5)
-  // 48-50s: Peak at success moment (0.5)
-  // 50-57s: Settle (0.5 → 0.35)
-  // 57-62s: Fade out (0.35 → 0)
-  const volumeCurve = (f: number) => {
+  // Two-part background music (Google Lyria2, crossfaded):
+  // Part 1 (0-33s): Dark driving tension — plays 0-33s, fades out 28-33s
+  // Part 2 (28-62s): Triumphant resolution — fades in 28-33s, fades out 57-62s
+  // Crossfade overlap: 28-33s (5 seconds)
+  const XFADE_START = 28 * fps;
+  const XFADE_END = 33 * fps;
+
+  // Part 1 volume: fade in 0-2s, steady, fade out during crossfade
+  const part1Volume = (f: number) => {
+    // f is relative to Part 1 start (frame 0)
     if (f < 2 * fps) {
-      return interpolate(f, [0, 2 * fps], [0, 0.3]);
+      return interpolate(f, [0, 2 * fps], [0, 0.35]);
     }
-    if (f < 35 * fps) {
-      return 0.3;
+    if (f < XFADE_START) {
+      return 0.35;
     }
-    if (f < 48 * fps) {
-      return interpolate(f, [35 * fps, 48 * fps], [0.3, 0.5]);
+    if (f < XFADE_END) {
+      return interpolate(f, [XFADE_START, XFADE_END], [0.35, 0], {
+        extrapolateRight: "clamp",
+      });
     }
-    if (f < 50 * fps) {
-      return 0.5;
+    return 0;
+  };
+
+  // Part 2 volume: fade in during crossfade, peak at success, fade out at end
+  const part2Volume = (f: number) => {
+    // f is relative to Part 2 start (frame XFADE_START)
+    const crossfadeDur = XFADE_END - XFADE_START;
+    if (f < crossfadeDur) {
+      // Crossfade in (0-5s of Part 2)
+      return interpolate(f, [0, crossfadeDur], [0, 0.35]);
     }
-    if (f < 57 * fps) {
-      return interpolate(f, [50 * fps, 57 * fps], [0.5, 0.35]);
+    // After crossfade: 33s to 62s of video = 5s to 34s of Part 2
+    const videoTime = XFADE_START / fps + f / fps; // absolute video time
+    if (videoTime < 48) {
+      // Build to peak during grab + watch
+      return interpolate(videoTime, [33, 48], [0.35, 0.55], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
     }
-    return interpolate(f, [57 * fps, durationInFrames], [0.35, 0], {
+    if (videoTime < 52) {
+      // Peak at success moment
+      return 0.55;
+    }
+    if (videoTime < 57) {
+      // Settle
+      return interpolate(videoTime, [52, 57], [0.55, 0.4], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      });
+    }
+    // Fade out
+    return interpolate(videoTime, [57, 62], [0.4, 0], {
+      extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
   };
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0d0d0d" }}>
-      {/* Background music — CC0 "Field of Ink" by Flowers for Bodysnatchers */}
+      {/* Part 1: Dark driving tension (Google Lyria2) */}
       <Audio
-        src={staticFile("bgm.mp3")}
-        volume={volumeCurve}
-        trimAfter={durationInFrames}
+        src={staticFile("bgm_part1.wav")}
+        volume={part1Volume}
       />
+
+      {/* Part 2: Triumphant resolution (Google Lyria2) — starts at crossfade point */}
+      <Sequence from={XFADE_START}>
+        <Audio
+          src={staticFile("bgm_part2.wav")}
+          volume={part2Volume}
+        />
+      </Sequence>
 
       <TransitionSeries>
         {/* Scene 1: Title (0-5s) */}
