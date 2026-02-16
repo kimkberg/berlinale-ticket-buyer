@@ -4,8 +4,9 @@ import asyncio
 import logging
 from pathlib import Path
 
-from app.config import Config
+from app.config import Config, TimingConfig
 from app.models import GrabTask
+from app.timing import HumanTiming
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,8 @@ class BrowserManager:
 
             page = await self.get_page()
             await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
-            await page.wait_for_timeout(2000)
+            page_wait = HumanTiming.get_page_wait(2000)
+            await page.wait_for_timeout(page_wait)
 
             url = page.url
             if "/login" in url.lower() or "/signin" in url.lower():
@@ -185,7 +187,8 @@ class TicketGrabber:
                 await _report("grabbing", "Retrying navigation...")
                 await page.goto(task.eventim_url, wait_until="commit", timeout=30000)
 
-            await page.wait_for_timeout(2000)
+            page_wait = HumanTiming.get_page_wait(2000)
+            await page.wait_for_timeout(page_wait)
             await _report("grabbing", "Page loaded, handling consent & finding tickets...")
 
             # Step 0: Dismiss cookie consent banner if present
@@ -205,7 +208,8 @@ class TicketGrabber:
                     await page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:
                     await page.reload(wait_until="commit", timeout=15000)
-                await page.wait_for_timeout(2000)
+                page_wait = HumanTiming.get_page_wait(2000)
+                await page.wait_for_timeout(page_wait)
                 await self._dismiss_cookie_banner(page)
 
                 result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
@@ -242,7 +246,8 @@ class TicketGrabber:
                 if btn and await btn.is_visible():
                     await btn.click()
                     logger.info("Dismissed consent banner: %s", sel)
-                    await page.wait_for_timeout(500)
+                    click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
+                    await page.wait_for_timeout(click_delay)
                     return
             except Exception:
                 continue
@@ -280,7 +285,8 @@ class TicketGrabber:
 
         if buy_clicked:
             await report("grabbing", "Clicked buy button, waiting for next page...")
-            await page.wait_for_timeout(3000)
+            page_wait = HumanTiming.get_page_wait(3000)
+            await page.wait_for_timeout(page_wait)
 
             # Check where we ended up
             new_url = page.url
@@ -307,13 +313,15 @@ class TicketGrabber:
         ticket_link_clicked = await self._click_ticket_link(page)
         if ticket_link_clicked:
             await report("grabbing", "Clicked ticket link, waiting...")
-            await page.wait_for_timeout(3000)
+            page_wait = HumanTiming.get_page_wait(3000)
+            await page.wait_for_timeout(page_wait)
             await self._dismiss_cookie_banner(page)
 
             qty_set = await self._set_ticket_quantity(page, ticket_count)
             buy_clicked = await self._click_buy_button(page)
             if buy_clicked:
-                await page.wait_for_timeout(3000)
+                page_wait = HumanTiming.get_page_wait(3000)
+                await page.wait_for_timeout(page_wait)
                 await report("success", "Buy button clicked - check browser to complete")
                 return {"success": True, "message": "Ticket process started - check browser window"}
 
@@ -336,7 +344,8 @@ class TicketGrabber:
                 if await btn.is_visible():
                     for _ in range(count):
                         await btn.click()
-                        await page.wait_for_timeout(400)
+                        click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
+                        await page.wait_for_timeout(click_delay)
                     logger.info("Clicked js-stepper-more %d times", count)
                     return True
             except Exception:
@@ -349,7 +358,8 @@ class TicketGrabber:
                 if await btn.is_visible():
                     for _ in range(count):
                         await btn.click()
-                        await page.wait_for_timeout(400)
+                        click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
+                        await page.wait_for_timeout(click_delay)
                     logger.info("Clicked more-tickets %d times", count)
                     return True
             except Exception:
@@ -362,7 +372,8 @@ class TicketGrabber:
                 if await btn.is_visible():
                     for _ in range(count):
                         await btn.click()
-                        await page.wait_for_timeout(400)
+                        click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
+                        await page.wait_for_timeout(click_delay)
                     logger.info("Clicked increase-amount %d times", count)
                     return True
             except Exception:
@@ -455,7 +466,8 @@ class TicketGrabber:
     async def _handle_intermediate_steps(self, page, ticket_count: int, report) -> dict | None:
         """Handle seat selection or other intermediate steps after initial buy click."""
         # Wait for possible page transition
-        await page.wait_for_timeout(2000)
+        page_wait = HumanTiming.get_page_wait(2000)
+        await page.wait_for_timeout(page_wait)
         current_url = page.url
 
         # Check if we're now on a seat map / selection page
@@ -479,7 +491,8 @@ class TicketGrabber:
                 if btn and await btn.is_visible():
                     await btn.click()
                     logger.info("Clicked continue: %s", sel)
-                    await page.wait_for_timeout(3000)
+                    page_wait = HumanTiming.get_page_wait(3000)
+                    await page.wait_for_timeout(page_wait)
 
                     new_url = page.url
                     if any(kw in new_url.lower() for kw in ["cart", "warenkorb", "basket", "checkout", "order"]):
@@ -491,7 +504,8 @@ class TicketGrabber:
         # Try another round of buy button clicks (new page might have different structure)
         buy_clicked = await self._click_buy_button(page)
         if buy_clicked:
-            await page.wait_for_timeout(3000)
+            page_wait = HumanTiming.get_page_wait(3000)
+            await page.wait_for_timeout(page_wait)
             new_url = page.url
             if any(kw in new_url.lower() for kw in ["cart", "warenkorb", "basket", "checkout"]):
                 return {"success": True, "message": "Ticket added to cart"}
@@ -527,7 +541,8 @@ class TicketGrabber:
                 await page.reload(wait_until="domcontentloaded", timeout=15000)
             except Exception:
                 await page.reload(wait_until="commit", timeout=15000)
-            await page.wait_for_timeout(1500)
+            page_wait = HumanTiming.get_page_wait(1500)
+            await page.wait_for_timeout(page_wait)
             await self._dismiss_cookie_banner(page)
 
             result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
@@ -541,7 +556,8 @@ class TicketGrabber:
                     await page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:
                     await page.reload(wait_until="commit", timeout=15000)
-                await page.wait_for_timeout(1500)
+                page_wait = HumanTiming.get_page_wait(1500)
+                await page.wait_for_timeout(page_wait)
 
                 result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
                 if result["success"]:
