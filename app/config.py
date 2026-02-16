@@ -49,3 +49,39 @@ class Config:
     SALE_TIME_HOUR = 10
     SALE_TIME_MINUTE = 0
     TIMEZONE = "Europe/Berlin"
+
+
+class TimingConfig:
+    """
+    Realistic human timing behavior configuration.
+    
+    Uses normal distribution to generate click delays that mimic natural human
+    variance while maximizing speed for competitive ticket grabbing.
+    """
+    
+    # Timing mode: "racing" (aggressive) or "normal" (scheduled)
+    TIMING_MODE = "racing"
+    
+    # Racing mode - someone actively watching and clicking fast
+    # Range: 20-50ms (well-documented human reaction time for racing scenarios)
+    RACING_CLICK_MEAN = 35      # ms - center of realistic human range
+    RACING_CLICK_STDDEV = 8     # ms - natural variance (not robotic)
+    RACING_CLICK_MIN = 20       # ms - fastest realistic clicks
+    RACING_CLICK_MAX = 50       # ms - slower end of racing range
+    
+    # Normal mode - scheduled automation with comfortable delays
+    # Range: 50-150ms (standard human interaction speeds)
+    NORMAL_CLICK_MEAN = 120     # ms - comfortable reaction time
+    NORMAL_CLICK_STDDEV = 30    # ms - natural variance
+    NORMAL_CLICK_MIN = 50       # ms - lower bound
+    NORMAL_CLICK_MAX = 150      # ms - upper bound
+    
+    # Page load waits - network and rendering delays
+    # Networks are naturally variable, adding variance keeps human appearance
+    PAGE_LOAD_MEAN = 1200       # ms - typical page load expectation
+    PAGE_LOAD_STDDEV = 300      # ms - network variance (±25%)
+    
+    # UI interaction waits - for modals, banners, animations
+    # Allows time for UI elements to dismiss and DOM to stabilize
+    UI_INTERACTION_MEAN = 500   # ms - typical UI animation time
+    UI_INTERACTION_STDDEV = 100 # ms - variance in UI rendering
