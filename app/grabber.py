@@ -43,20 +43,27 @@ class BrowserManager:
                 logger.warning("Removed stale SingletonLock from %s", profile_dir)
 
             self._playwright = await async_playwright().start()
-            self._context = await self._playwright.chromium.launch_persistent_context(
-                user_data_dir=str(profile_dir),
-                headless=False,
-                viewport={"width": 1280, "height": 900},
-                locale="de-DE",
-                timezone_id=Config.TIMEZONE,
-                args=[
+
+            launch_args = {
+                "user_data_dir": str(profile_dir),
+                "headless": False,
+                "viewport": {"width": 1280, "height": 900},
+                "locale": "de-DE",
+                "timezone_id": Config.TIMEZONE,
+                "args": [
                     "--disable-blink-features=AutomationControlled",
                     "--no-first-run",
                     "--no-default-browser-check",
                     "--disable-dev-shm-usage",
                     "--start-maximized",
                 ],
-            )
+            }
+
+            if Config.PROXY_URL:
+                launch_args["proxy"] = {"server": Config.PROXY_URL}
+                logger.info("Using proxy: %s", Config.PROXY_URL)
+
+            self._context = await self._playwright.chromium.launch_persistent_context(**launch_args)
 
             # Apply stealth to existing and future pages
             try:
