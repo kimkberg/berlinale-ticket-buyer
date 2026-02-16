@@ -19,22 +19,17 @@ _client: httpx.AsyncClient | None = None
 def _get_client() -> httpx.AsyncClient:
     global _client
     if _client is None or _client.is_closed:
-        client_kwargs = {
-            "base_url": Config.BERLINALE_BASE_URL,
-            "timeout": 15.0,
-            "headers": {
+        _client = httpx.AsyncClient(
+            base_url=Config.BERLINALE_BASE_URL,
+            timeout=15.0,
+            headers={
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/131.0.0.0 Safari/537.36",
                 "Accept": "application/json, text/javascript, */*",
                 "Accept-Language": "en-US,en;q=0.9",
             },
-        }
-        if Config.PROXY_URL:
-            client_kwargs["proxy"] = Config.PROXY_URL
-            logger.info("Berlinale API using proxy: %s", Config.PROXY_URL)
-
-        _client = httpx.AsyncClient(**client_kwargs)
+        )
     return _client
 
 
