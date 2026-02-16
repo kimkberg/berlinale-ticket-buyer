@@ -1,3 +1,4 @@
+import os
 from datetime import date
 
 
@@ -49,6 +50,9 @@ class Config:
     SALE_TIME_HOUR = 10
     SALE_TIME_MINUTE = 0
     TIMEZONE = "Europe/Berlin"
+
+    # Proxy settings (optional)
+    PROXY_URL = os.environ.get("PROXY_URL", None)  # e.g. "http://proxy:8080" or "socks5://proxy:1080"
 
 
 class TimingConfig:

@@ -24,18 +24,23 @@ class APIGrabber:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                timeout=15.0,
-                follow_redirects=True,
-                headers={
+            client_kwargs = {
+                "timeout": 15.0,
+                "follow_redirects": True,
+                "headers": {
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/131.0.0.0 Safari/537.36",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.9,de;q=0.8",
                 },
-                cookies=self._cookies,
-            )
+                "cookies": self._cookies,
+            }
+            if Config.PROXY_URL:
+                client_kwargs["proxy"] = Config.PROXY_URL
+                logger.info("API Grabber using proxy: %s", Config.PROXY_URL)
+            
+            self._client = httpx.AsyncClient(**client_kwargs)
         return self._client
 
     def load_cookies_from_browser(self, browser_manager) -> bool:
