@@ -52,6 +52,11 @@ class BrowserManager:
                     "--disable-blink-features=AutomationControlled",
                     "--no-first-run",
                     "--no-default-browser-check",
+                    "--disable-dev-shm-usage",  # Reduce memory issues on Linux
+                    "--disable-gpu",  # Avoid GPU-related bot detection
+                    "--start-maximized",  # Appear more like a real browser session
+                    "--disable-extensions",  # Prevent extension-based detection
+                    "--disable-plugins",  # Remove plugin detection vectors
                 ],
             )
 
@@ -114,7 +119,7 @@ class BrowserManager:
 
             page = await self.get_page()
             await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(1000)  # Reduced from 2000ms
 
             url = page.url
             if "/login" in url.lower() or "/signin" in url.lower():
@@ -156,6 +161,43 @@ class BrowserManager:
 class TicketGrabber:
     """Automates the ticket purchasing flow on Eventim using Playwright."""
 
+    # Timing constants for smart waits and interactions
+    SMART_WAIT_TIMEOUT_MS = 3000  # Maximum time to wait for expected elements/navigation
+    SMART_WAIT_FALLBACK_MS = 1500  # Fallback delay if smart wait times out
+    QUANTITY_CLICK_DELAY_MS = 200  # Delay between quantity increment clicks
+
+    # JavaScript function to detect cart/checkout navigation
+    JS_WAIT_FOR_CART = """() => {
+        const url = window.location.href.toLowerCase();
+        return url.includes('cart') || url.includes('warenkorb') ||
+               url.includes('basket') || url.includes('checkout');
+    }"""
+
+    # JavaScript function to detect cart/checkout/order navigation (extended)
+    JS_WAIT_FOR_CART_EXTENDED = """() => {
+        const url = window.location.href.toLowerCase();
+        return url.includes('cart') || url.includes('warenkorb') ||
+               url.includes('basket') || url.includes('checkout') ||
+               url.includes('order');
+    }"""
+
+    # JavaScript function to detect cart-related page elements
+    JS_WAIT_FOR_CART_ELEMENTS = """() => {
+        const url = window.location.href.toLowerCase();
+        return url.includes('cart') || url.includes('warenkorb') ||
+               url.includes('basket') || url.includes('checkout') ||
+               document.querySelector('[class*="cart"]') ||
+               document.querySelector('[class*="checkout"]');
+    }"""
+
+    # JavaScript function to detect ticket purchase elements
+    JS_WAIT_FOR_TICKET_ELEMENTS = """() => {
+        return document.querySelector('button.js-stepper-action') ||
+               document.querySelector('[data-qa="more-tickets"]') ||
+               (document.querySelectorAll('button').length < 50 &&
+                Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('Ticket')));
+    }"""
+
     def __init__(self, browser_manager: BrowserManager):
         self.browser = browser_manager
 
@@ -185,7 +227,7 @@ class TicketGrabber:
                 await _report("grabbing", "Retrying navigation...")
                 await page.goto(task.eventim_url, wait_until="commit", timeout=30000)
 
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(1000)  # Reduced from 2000ms
             await _report("grabbing", "Page loaded, handling consent & finding tickets...")
 
             # Step 0: Dismiss cookie consent banner if present
@@ -205,7 +247,7 @@ class TicketGrabber:
                     await page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:
                     await page.reload(wait_until="commit", timeout=15000)
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(1000)  # Reduced from 2000ms
                 await self._dismiss_cookie_banner(page)
 
                 result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
@@ -280,7 +322,15 @@ class TicketGrabber:
 
         if buy_clicked:
             await report("grabbing", "Clicked buy button, waiting for next page...")
-            await page.wait_for_timeout(3000)
+            # Smart wait: try to wait for URL change or cart-related elements
+            try:
+                await page.wait_for_function(
+                    self.JS_WAIT_FOR_CART_ELEMENTS,
+                    timeout=self.SMART_WAIT_TIMEOUT_MS
+                )
+            except Exception:
+                # Fallback to minimal wait if no cart elements detected
+                await page.wait_for_timeout(self.SMART_WAIT_FALLBACK_MS)
 
             # Check where we ended up
             new_url = page.url
@@ -307,13 +357,27 @@ class TicketGrabber:
         ticket_link_clicked = await self._click_ticket_link(page)
         if ticket_link_clicked:
             await report("grabbing", "Clicked ticket link, waiting...")
-            await page.wait_for_timeout(3000)
+            # Smart wait with fallback - check for ticket purchase elements
+            try:
+                await page.wait_for_function(
+                    self.JS_WAIT_FOR_TICKET_ELEMENTS,
+                    timeout=self.SMART_WAIT_TIMEOUT_MS
+                )
+            except Exception:
+                await page.wait_for_timeout(self.SMART_WAIT_FALLBACK_MS)
             await self._dismiss_cookie_banner(page)
 
             qty_set = await self._set_ticket_quantity(page, ticket_count)
             buy_clicked = await self._click_buy_button(page)
             if buy_clicked:
-                await page.wait_for_timeout(3000)
+                # Smart wait with fallback
+                try:
+                    await page.wait_for_function(
+                        self.JS_WAIT_FOR_CART,
+                        timeout=self.SMART_WAIT_TIMEOUT_MS
+                    )
+                except Exception:
+                    await page.wait_for_timeout(self.SMART_WAIT_FALLBACK_MS)
                 await report("success", "Buy button clicked - check browser to complete")
                 return {"success": True, "message": "Ticket process started - check browser window"}
 
@@ -336,7 +400,7 @@ class TicketGrabber:
                 if await btn.is_visible():
                     for _ in range(count):
                         await btn.click()
-                        await page.wait_for_timeout(400)
+                        await page.wait_for_timeout(self.QUANTITY_CLICK_DELAY_MS)
                     logger.info("Clicked js-stepper-more %d times", count)
                     return True
             except Exception:
@@ -349,7 +413,7 @@ class TicketGrabber:
                 if await btn.is_visible():
                     for _ in range(count):
                         await btn.click()
-                        await page.wait_for_timeout(400)
+                        await page.wait_for_timeout(self.QUANTITY_CLICK_DELAY_MS)
                     logger.info("Clicked more-tickets %d times", count)
                     return True
             except Exception:
@@ -362,7 +426,7 @@ class TicketGrabber:
                 if await btn.is_visible():
                     for _ in range(count):
                         await btn.click()
-                        await page.wait_for_timeout(400)
+                        await page.wait_for_timeout(self.QUANTITY_CLICK_DELAY_MS)
                     logger.info("Clicked increase-amount %d times", count)
                     return True
             except Exception:
@@ -455,7 +519,7 @@ class TicketGrabber:
     async def _handle_intermediate_steps(self, page, ticket_count: int, report) -> dict | None:
         """Handle seat selection or other intermediate steps after initial buy click."""
         # Wait for possible page transition
-        await page.wait_for_timeout(2000)
+        await page.wait_for_timeout(1000)  # Reduced from 2000ms
         current_url = page.url
 
         # Check if we're now on a seat map / selection page
@@ -479,7 +543,14 @@ class TicketGrabber:
                 if btn and await btn.is_visible():
                     await btn.click()
                     logger.info("Clicked continue: %s", sel)
-                    await page.wait_for_timeout(3000)
+                    # Smart wait with fallback
+                    try:
+                        await page.wait_for_function(
+                            self.JS_WAIT_FOR_CART_EXTENDED,
+                            timeout=self.SMART_WAIT_TIMEOUT_MS
+                        )
+                    except Exception:
+                        await page.wait_for_timeout(self.SMART_WAIT_FALLBACK_MS)
 
                     new_url = page.url
                     if any(kw in new_url.lower() for kw in ["cart", "warenkorb", "basket", "checkout", "order"]):
@@ -491,7 +562,14 @@ class TicketGrabber:
         # Try another round of buy button clicks (new page might have different structure)
         buy_clicked = await self._click_buy_button(page)
         if buy_clicked:
-            await page.wait_for_timeout(3000)
+            # Smart wait with fallback
+            try:
+                await page.wait_for_function(
+                    self.JS_WAIT_FOR_CART,
+                    timeout=self.SMART_WAIT_TIMEOUT_MS
+                )
+            except Exception:
+                await page.wait_for_timeout(self.SMART_WAIT_FALLBACK_MS)
             new_url = page.url
             if any(kw in new_url.lower() for kw in ["cart", "warenkorb", "basket", "checkout"]):
                 return {"success": True, "message": "Ticket added to cart"}
@@ -527,7 +605,7 @@ class TicketGrabber:
                 await page.reload(wait_until="domcontentloaded", timeout=15000)
             except Exception:
                 await page.reload(wait_until="commit", timeout=15000)
-            await page.wait_for_timeout(1500)
+            await page.wait_for_timeout(1000)  # Reduced from 1500ms
             await self._dismiss_cookie_banner(page)
 
             result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
@@ -541,7 +619,7 @@ class TicketGrabber:
                     await page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:
                     await page.reload(wait_until="commit", timeout=15000)
-                await page.wait_for_timeout(1500)
+                await page.wait_for_timeout(1000)  # Reduced from 1500ms
 
                 result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
                 if result["success"]:
