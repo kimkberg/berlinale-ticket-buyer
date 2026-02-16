@@ -47,17 +47,14 @@ class BrowserManager:
                 user_data_dir=str(profile_dir),
                 headless=False,
                 viewport={"width": 1280, "height": 900},
-                locale="en-US",
+                locale="de-DE",
                 timezone_id=Config.TIMEZONE,
                 args=[
                     "--disable-blink-features=AutomationControlled",
                     "--no-first-run",
                     "--no-default-browser-check",
-                    "--disable-dev-shm-usage",  # Reduce memory issues on Linux
-                    "--disable-gpu",  # Avoid GPU-related bot detection
-                    "--start-maximized",  # Appear more like a real browser session
-                    "--disable-extensions",  # Prevent extension-based detection
-                    "--disable-plugins",  # Remove plugin detection vectors
+                    "--disable-dev-shm-usage",
+                    "--start-maximized",
                 ],
             )
 
@@ -166,7 +163,6 @@ class TicketGrabber:
     # Timing constants for smart waits and interactions
     SMART_WAIT_TIMEOUT_MS = 3000  # Maximum time to wait for expected elements/navigation
     SMART_WAIT_FALLBACK_MS = 1500  # Fallback delay if smart wait times out
-    QUANTITY_CLICK_DELAY_MS = 200  # Delay between quantity increment clicks
 
     # JavaScript function to detect cart/checkout navigation
     JS_WAIT_FOR_CART = """() => {
@@ -202,6 +198,39 @@ class TicketGrabber:
 
     def __init__(self, browser_manager: BrowserManager):
         self.browser = browser_manager
+
+    async def _human_click(self, page, element) -> None:
+        """Move mouse to element with human-like trajectory, then click."""
+        try:
+            box = await element.bounding_box()
+            if not box:
+                await element.click()
+                return
+            
+            # Target: random point within the element (not dead center)
+            # Click within 30-70% of width/height to avoid edges
+            from app.timing import _get_random
+            rng = _get_random()
+            target_x = box['x'] + box['width'] * (0.3 + rng.random() * 0.4)
+            target_y = box['y'] + box['height'] * (0.3 + rng.random() * 0.4)
+            
+            # Get current mouse position (default to a reasonable starting point)
+            # Playwright doesn't expose current mouse position, so we estimate
+            # Constrain to viewport bounds (1280x900)
+            start_x = max(0, min(1280, rng.uniform(box['x'] - 200, box['x'] + box['width'] + 200)))
+            start_y = max(0, min(900, rng.uniform(max(0, box['y'] - 150), box['y'] + box['height'] + 150)))
+            
+            path = HumanTiming.generate_mouse_path(start_x, start_y, target_x, target_y)
+            
+            for x, y in path:
+                await page.mouse.move(x, y)
+                move_delay = HumanTiming.get_mouse_move_delay()
+                await page.wait_for_timeout(move_delay)
+            
+            await page.mouse.click(target_x, target_y)
+        except Exception:
+            # Fallback to simple click if mouse movement fails
+            await element.click()
 
     async def grab_ticket(self, task: GrabTask, on_status=None) -> dict:
         """Execute the full ticket grabbing flow.
@@ -245,7 +274,8 @@ class TicketGrabber:
             # Step 2: Retry
             for attempt in range(Config.GRAB_RETRY_COUNT):
                 await _report("grabbing", f"Retry {attempt + 1}/{Config.GRAB_RETRY_COUNT}...")
-                await asyncio.sleep(Config.GRAB_RETRY_DELAY)
+                retry_delay = HumanTiming.get_page_wait(1000) / 1000  # Convert ms to seconds with jitter
+                await asyncio.sleep(retry_delay)
                 try:
                     await page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:
@@ -407,7 +437,7 @@ class TicketGrabber:
             try:
                 if await btn.is_visible():
                     for _ in range(count):
-                        await btn.click()
+                        await self._human_click(page, btn)
                         click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
                         await page.wait_for_timeout(click_delay)
                     logger.info("Clicked js-stepper-more %d times", count)
@@ -421,7 +451,7 @@ class TicketGrabber:
             try:
                 if await btn.is_visible():
                     for _ in range(count):
-                        await btn.click()
+                        await self._human_click(page, btn)
                         click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
                         await page.wait_for_timeout(click_delay)
                     logger.info("Clicked more-tickets %d times", count)
@@ -435,7 +465,7 @@ class TicketGrabber:
             try:
                 if await btn.is_visible():
                     for _ in range(count):
-                        await btn.click()
+                        await self._human_click(page, btn)
                         click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
                         await page.wait_for_timeout(click_delay)
                     logger.info("Clicked increase-amount %d times", count)
@@ -461,7 +491,7 @@ class TicketGrabber:
                     # Only click if tickets have been selected (not "0 Tickets")
                     if "0 Ticket" not in text:
                         await btn.scroll_into_view_if_needed()
-                        await btn.click()
+                        await self._human_click(page, btn)
                         logger.info("Clicked js-stepper-action: '%s'", text)
                         return True
                     else:
@@ -476,7 +506,7 @@ class TicketGrabber:
                 text = (await ticket_btn.inner_text()).strip()
                 if "0 Ticket" not in text and "Ticket" in text:
                     await ticket_btn.scroll_into_view_if_needed()
-                    await ticket_btn.click()
+                    await self._human_click(page, ticket_btn)
                     logger.info("Clicked ticket button: '%s'", text)
                     return True
         except Exception:
@@ -496,7 +526,7 @@ class TicketGrabber:
                 b = await page.query_selector(sel)
                 if b and await b.is_visible():
                     await b.scroll_into_view_if_needed()
-                    await b.click()
+                    await self._human_click(page, b)
                     logger.info("Clicked buy button: %s", sel)
                     return True
             except Exception:
@@ -520,7 +550,7 @@ class TicketGrabber:
             try:
                 el = await page.query_selector(sel)
                 if el and await el.is_visible():
-                    await el.click()
+                    await self._human_click(page, el)
                     logger.info("Clicked ticket link: %s", sel)
                     return True
             except Exception:
@@ -553,7 +583,7 @@ class TicketGrabber:
             try:
                 btn = await page.query_selector(sel)
                 if btn and await btn.is_visible():
-                    await btn.click()
+                    await self._human_click(page, btn)
                     logger.info("Clicked continue: %s", sel)
                     # Smart wait with fallback
                     try:
@@ -629,7 +659,8 @@ class TicketGrabber:
 
             for attempt in range(Config.GRAB_RETRY_COUNT):
                 await _report("grabbing", f"Retry {attempt + 1}...")
-                await asyncio.sleep(Config.GRAB_RETRY_DELAY)
+                retry_delay = HumanTiming.get_page_wait(1000) / 1000  # Convert ms to seconds with jitter
+                await asyncio.sleep(retry_delay)
                 try:
                     await page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:

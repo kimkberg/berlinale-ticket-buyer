@@ -5,6 +5,7 @@ Implements probabilistic timing delays using normal distribution to mimic
 natural human behavior while optimizing for speed in competitive scenarios.
 """
 
+import math
 import random
 import threading
 from typing import Literal
@@ -130,3 +131,58 @@ class HumanTiming:
         delay = max(min_delay, min(max_delay, delay))
         
         return delay
+
+    @staticmethod
+    def generate_mouse_path(
+        start_x: float, start_y: float,
+        end_x: float, end_y: float,
+        steps: int = None
+    ) -> list[tuple[float, float]]:
+        """
+        Generate a human-like mouse movement path using Bézier curve interpolation.
+        
+        Args:
+            start_x, start_y: Starting mouse position
+            end_x, end_y: Target position (element center)
+            steps: Number of intermediate points (auto-calculated if None)
+        
+        Returns:
+            List of (x, y) coordinate tuples forming the path
+        """
+        distance = math.sqrt((end_x - start_x) * (end_x - start_x) + 
+                             (end_y - start_y) * (end_y - start_y))
+        
+        if steps is None:
+            # More steps for longer distances, minimum 8, max ~25
+            steps = max(8, min(25, int(distance / 30)))
+        
+        rng = _get_random()
+        
+        # Generate control point for quadratic Bézier curve
+        # Offset by ~10% of distance to create natural curvature
+        # (mimics slight arc of natural hand movement)
+        mid_x = (start_x + end_x) / 2 + rng.gauss(0, distance * 0.1)
+        mid_y = (start_y + end_y) / 2 + rng.gauss(0, distance * 0.1)
+        
+        path = []
+        for i in range(steps + 1):
+            t = i / steps
+            # Quadratic Bézier: B(t) = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
+            x = (1 - t) ** 2 * start_x + 2 * (1 - t) * t * mid_x + t ** 2 * end_x
+            y = (1 - t) ** 2 * start_y + 2 * (1 - t) * t * mid_y + t ** 2 * end_y
+            # Add small jitter (±1-2 pixels) to simulate hand tremor
+            x += rng.gauss(0, 1.5)
+            y += rng.gauss(0, 1.5)
+            path.append((x, y))
+        
+        return path
+
+    @staticmethod
+    def get_mouse_move_delay() -> float:
+        """
+        Generate delay between mouse movement steps (in ms).
+        Simulates the speed of natural hand movement.
+        Range: 5-15ms per step (results in ~50-375ms total movement time)
+        """
+        rng = _get_random()
+        return max(5, min(15, rng.gauss(8, 2)))
