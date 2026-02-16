@@ -31,20 +31,20 @@ class HumanTiming:
         Generate a realistic click delay with natural variance.
 
         Args:
-            mode: "racing" for aggressive ticket-grabbing (20-50ms range),
-                  "normal" for scheduled automation (50-150ms range)
+            mode: "racing" for aggressive ticket-grabbing (80-300ms range),
+                  "normal" for scheduled automation (150-600ms range)
 
         Returns:
             Delay in milliseconds, sampled from normal distribution with bounds
 
-        Racing mode (20-50ms):
-            - Mean: 35ms (center of realistic human clicking speed)
-            - Std dev: 8ms (natural variance)
-            - Mimics someone actively watching and clicking fast
+        Racing mode (80-300ms):
+            - Mean: 180ms (fast but realistic human reaction time)
+            - Std dev: 40ms (natural variance)
+            - Mimics someone actively watching and clicking competitively
 
-        Normal mode (50-150ms):
-            - Mean: 120ms (comfortable human reaction time)
-            - Std dev: 30ms (natural variance)
+        Normal mode (150-600ms):
+            - Mean: 350ms (comfortable, relaxed clicking speed)
+            - Std dev: 80ms (natural variance)
             - Mimics scheduled automation with realistic delays
         """
         from app.config import TimingConfig
