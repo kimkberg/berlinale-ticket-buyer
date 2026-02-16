@@ -39,7 +39,7 @@ class APIGrabber:
             if Config.PROXY_URL:
                 client_kwargs["proxy"] = Config.PROXY_URL
                 logger.info("API Grabber using proxy: %s", Config.PROXY_URL)
-            
+
             self._client = httpx.AsyncClient(**client_kwargs)
         return self._client
 

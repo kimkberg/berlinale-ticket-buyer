@@ -33,7 +33,7 @@ def _get_client() -> httpx.AsyncClient:
         if Config.PROXY_URL:
             client_kwargs["proxy"] = Config.PROXY_URL
             logger.info("Berlinale API using proxy: %s", Config.PROXY_URL)
-        
+
         _client = httpx.AsyncClient(**client_kwargs)
     return _client
 
