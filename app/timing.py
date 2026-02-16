@@ -149,7 +149,8 @@ class HumanTiming:
         Returns:
             List of (x, y) coordinate tuples forming the path
         """
-        distance = math.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2)
+        distance = math.sqrt((end_x - start_x) * (end_x - start_x) + 
+                             (end_y - start_y) * (end_y - start_y))
         
         if steps is None:
             # More steps for longer distances, minimum 8, max ~25
@@ -157,8 +158,9 @@ class HumanTiming:
         
         rng = _get_random()
         
-        # Generate 1-2 control points for a quadratic/cubic Bézier curve
-        # with some randomness to simulate natural hand movement
+        # Generate control point for quadratic Bézier curve
+        # Offset by ~10% of distance to create natural curvature
+        # (mimics slight arc of natural hand movement)
         mid_x = (start_x + end_x) / 2 + rng.gauss(0, distance * 0.1)
         mid_y = (start_y + end_y) / 2 + rng.gauss(0, distance * 0.1)
         
@@ -168,7 +170,7 @@ class HumanTiming:
             # Quadratic Bézier: B(t) = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
             x = (1 - t) ** 2 * start_x + 2 * (1 - t) * t * mid_x + t ** 2 * end_x
             y = (1 - t) ** 2 * start_y + 2 * (1 - t) * t * mid_y + t ** 2 * end_y
-            # Add small jitter to simulate hand tremor
+            # Add small jitter (±1-2 pixels) to simulate hand tremor
             x += rng.gauss(0, 1.5)
             y += rng.gauss(0, 1.5)
             path.append((x, y))

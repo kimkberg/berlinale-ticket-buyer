@@ -208,6 +208,7 @@ class TicketGrabber:
                 return
             
             # Target: random point within the element (not dead center)
+            # Click within 30-70% of width/height to avoid edges
             from app.timing import _get_random
             rng = _get_random()
             target_x = box['x'] + box['width'] * (0.3 + rng.random() * 0.4)
@@ -215,8 +216,9 @@ class TicketGrabber:
             
             # Get current mouse position (default to a reasonable starting point)
             # Playwright doesn't expose current mouse position, so we estimate
-            start_x = rng.uniform(box['x'] - 200, box['x'] + box['width'] + 200)
-            start_y = rng.uniform(max(0, box['y'] - 150), box['y'] + box['height'] + 150)
+            # Constrain to viewport bounds (1280x900)
+            start_x = max(0, min(1280, rng.uniform(box['x'] - 200, box['x'] + box['width'] + 200)))
+            start_y = max(0, min(900, rng.uniform(max(0, box['y'] - 150), box['y'] + box['height'] + 150)))
             
             path = HumanTiming.generate_mouse_path(start_x, start_y, target_x, target_y)
             
