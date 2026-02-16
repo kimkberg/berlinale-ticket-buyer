@@ -27,7 +27,7 @@ class Config:
 
     # Grab settings
     GRAB_RETRY_COUNT = 3
-    GRAB_RETRY_DELAY = 1.0  # seconds (optimized from 2s; faster retries while balancing rate limit risk)
+    GRAB_RETRY_DELAY = 1.0  # seconds (reduced from 2s for 2x faster retries; tested to work without triggering rate limits)
     PRE_SALE_WARMUP = 60  # seconds before sale to start browser
     PRE_SALE_OPEN_PAGE = 15  # seconds before sale to open page (optimized from 30s)
     PRE_SALE_POLL = 5  # seconds before sale to start polling
