@@ -246,8 +246,8 @@ class TicketGrabber:
                 if btn and await btn.is_visible():
                     await btn.click()
                     logger.info("Dismissed consent banner: %s", sel)
-                    click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
-                    await page.wait_for_timeout(click_delay)
+                    ui_delay = HumanTiming.get_ui_interaction_delay()
+                    await page.wait_for_timeout(ui_delay)
                     return
             except Exception:
                 continue
