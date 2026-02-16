@@ -27,15 +27,15 @@ class Config:
 
     # Grab settings
     GRAB_RETRY_COUNT = 3
-    GRAB_RETRY_DELAY = 2  # seconds
+    GRAB_RETRY_DELAY = 0.5  # seconds (optimized from 2s for 4x faster retries)
     PRE_SALE_WARMUP = 60  # seconds before sale to start browser
-    PRE_SALE_OPEN_PAGE = 30  # seconds before sale to open page
+    PRE_SALE_OPEN_PAGE = 15  # seconds before sale to open page (optimized from 30s)
     PRE_SALE_POLL = 5  # seconds before sale to start polling
     POLL_INTERVAL = 0.5  # seconds between polls
 
     # Monitor settings
     MONITOR_POLL_INTERVAL = 15       # seconds between polls (normal)
-    MONITOR_FAST_POLL_INTERVAL = 5   # seconds between polls (within golden hour)
+    MONITOR_FAST_POLL_INTERVAL = 2   # seconds between polls (optimized from 5s for faster availability detection)
     MONITOR_GOLDEN_HOUR_MINUTES = 60 # minutes before screening to switch to fast poll
 
     # Festival dates
