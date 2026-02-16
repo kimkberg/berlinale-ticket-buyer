@@ -43,7 +43,7 @@ class BrowserManager:
                 logger.warning("Removed stale SingletonLock from %s", profile_dir)
 
             self._playwright = await async_playwright().start()
-            
+
             launch_args = {
                 "user_data_dir": str(profile_dir),
                 "headless": False,
