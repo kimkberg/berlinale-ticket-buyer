@@ -62,19 +62,19 @@ class TimingConfig:
     # Timing mode: "racing" (aggressive) or "normal" (scheduled)
     TIMING_MODE = "racing"
     
-    # Racing mode - someone actively watching and clicking fast
-    # Range: 20-50ms (well-documented human reaction time for racing scenarios)
-    RACING_CLICK_MEAN = 35      # ms - center of realistic human range
-    RACING_CLICK_STDDEV = 8     # ms - natural variance (not robotic)
-    RACING_CLICK_MIN = 20       # ms - fastest realistic clicks
-    RACING_CLICK_MAX = 50       # ms - slower end of racing range
+    # Racing mode - competitive but humanly possible
+    # Range: 80-300ms (fast but realistic human reaction time)
+    RACING_CLICK_MEAN = 180     # ms - fast but realistic human reaction
+    RACING_CLICK_STDDEV = 40    # ms - natural variance
+    RACING_CLICK_MIN = 80       # ms - absolute fastest realistic click
+    RACING_CLICK_MAX = 300      # ms - slower end with occasional hesitation
     
-    # Normal mode - scheduled automation with comfortable delays
-    # Range: 50-150ms (standard human interaction speeds)
-    NORMAL_CLICK_MEAN = 120     # ms - comfortable reaction time
-    NORMAL_CLICK_STDDEV = 30    # ms - natural variance
-    NORMAL_CLICK_MIN = 50       # ms - lower bound
-    NORMAL_CLICK_MAX = 150      # ms - upper bound
+    # Normal mode - comfortable human interaction
+    # Range: 150-600ms (relaxed clicking speed)
+    NORMAL_CLICK_MEAN = 350     # ms - relaxed clicking speed
+    NORMAL_CLICK_STDDEV = 80    # ms - natural variance
+    NORMAL_CLICK_MIN = 150      # ms - lower bound
+    NORMAL_CLICK_MAX = 600      # ms - upper bound
     
     # Page load waits - network and rendering delays
     # Networks are naturally variable, adding variance keeps human appearance
