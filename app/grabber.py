@@ -205,6 +205,8 @@ class TicketGrabber:
 
     def __init__(self, browser_manager: BrowserManager):
         self.browser = browser_manager
+        self._last_mouse_x = 640.0  # Start at viewport center
+        self._last_mouse_y = 450.0
 
     async def _human_click(self, page, element) -> None:
         """Move mouse to element with human-like trajectory, then click."""
@@ -221,11 +223,9 @@ class TicketGrabber:
             target_x = box['x'] + box['width'] * (0.3 + rng.random() * 0.4)
             target_y = box['y'] + box['height'] * (0.3 + rng.random() * 0.4)
             
-            # Get current mouse position (default to a reasonable starting point)
-            # Playwright doesn't expose current mouse position, so we estimate
-            # Constrain to viewport bounds (1280x900)
-            start_x = max(0, min(1280, rng.uniform(box['x'] - 200, box['x'] + box['width'] + 200)))
-            start_y = max(0, min(900, rng.uniform(max(0, box['y'] - 150), box['y'] + box['height'] + 150)))
+            # Use tracked mouse position from previous click
+            start_x = self._last_mouse_x
+            start_y = self._last_mouse_y
             
             path = HumanTiming.generate_mouse_path(start_x, start_y, target_x, target_y)
             
@@ -235,6 +235,10 @@ class TicketGrabber:
                 await page.wait_for_timeout(move_delay)
             
             await page.mouse.click(target_x, target_y)
+            
+            # Track mouse position for next click
+            self._last_mouse_x = target_x
+            self._last_mouse_y = target_y
         except Exception:
             # Fallback to simple click if mouse movement fails
             await element.click()
@@ -323,7 +327,7 @@ class TicketGrabber:
             try:
                 btn = await page.query_selector(sel)
                 if btn and await btn.is_visible():
-                    await btn.click()
+                    await self._human_click(page, btn)
                     logger.info("Dismissed consent banner: %s", sel)
                     ui_delay = HumanTiming.get_ui_interaction_delay()
                     await page.wait_for_timeout(ui_delay)
