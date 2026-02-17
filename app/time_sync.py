@@ -175,7 +175,10 @@ class HTTPTimeSyncProvider(TimeSyncProvider):
                     # Calculate offset with network latency compensation
                     network_delay = (after - before).total_seconds() / 2
                     local_time_mid = before + (after - before) / 2
-                    offset = (atomic_time - local_time_mid.replace(tzinfo=timezone.utc)).total_seconds()
+                    # Ensure atomic_time has timezone info for proper comparison
+                    if atomic_time.tzinfo is None:
+                        atomic_time = atomic_time.replace(tzinfo=timezone.utc)
+                    offset = (atomic_time - local_time_mid).total_seconds()
                     
                     logger.info(
                         f"✓ HTTP sync successful | "
@@ -238,7 +241,7 @@ class AtomicTimeSync:
         success, offset = await provider.sync()
         if success and offset is not None:
             self._offset = offset
-            self._last_sync = datetime.now()
+            self._last_sync = datetime.now(timezone.utc)
             self._active_provider = provider_name
             return True
         return False
@@ -259,18 +262,26 @@ class AtomicTimeSync:
         # Check if we need to re-sync
         if self._should_resync():
             logger.info("Time sync expired, re-syncing in background")
-            asyncio.create_task(self.sync())
+            # Create background task but don't await it
+            task = asyncio.create_task(self.sync())
+            # Add callback to log any exceptions
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
         
         # Return system time corrected by offset
-        base_time = datetime.now(timezone.utc if tz else None)
-        corrected = base_time + timedelta(seconds=self._offset)
-        return corrected.astimezone(tz) if tz else corrected.replace(tzinfo=None)
+        if tz:
+            base_time = datetime.now(timezone.utc)
+            corrected = base_time + timedelta(seconds=self._offset)
+            return corrected.astimezone(tz)
+        else:
+            # For naive datetime (local time), use local clock with offset
+            base_time = datetime.now()
+            return base_time + timedelta(seconds=self._offset)
     
     def _should_resync(self) -> bool:
         """Check if re-sync is needed."""
         if not self._last_sync:
             return True
-        elapsed = (datetime.now() - self._last_sync).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - self._last_sync).total_seconds()
         return elapsed > self._sync_interval
     
     @property
