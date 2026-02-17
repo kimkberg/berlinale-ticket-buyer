@@ -127,10 +127,15 @@ class NTPTimeSyncProvider(TimeSyncProvider):
 class HTTPTimeSyncProvider(TimeSyncProvider):
     """HTTP-based time synchronization (works with any proxy)."""
     
+    @staticmethod
+    def _parse_datetime_with_z(data: dict, key: str) -> datetime:
+        """Parse datetime string, replacing 'Z' suffix with UTC timezone."""
+        return datetime.fromisoformat(data[key].replace("Z", "+00:00"))
+    
     TIME_APIS = [
         {
             "url": "https://timeapi.io/api/time/current/zone?timeZone=Europe/Berlin",
-            "parser": lambda r: datetime.fromisoformat(r["dateTime"].replace("Z", "+00:00"))
+            "parser": lambda r: HTTPTimeSyncProvider._parse_datetime_with_z(r, "dateTime")
         },
         {
             "url": "https://worldtimeapi.org/api/timezone/Europe/Berlin",
@@ -138,7 +143,7 @@ class HTTPTimeSyncProvider(TimeSyncProvider):
         },
         {
             "url": "https://timeapi.io/api/time/current/zone?timeZone=UTC",
-            "parser": lambda r: datetime.fromisoformat(r["dateTime"].replace("Z", "+00:00"))
+            "parser": lambda r: HTTPTimeSyncProvider._parse_datetime_with_z(r, "dateTime")
         },
     ]
     
@@ -265,7 +270,12 @@ class AtomicTimeSync:
             # Create background task but don't await it
             task = asyncio.create_task(self.sync())
             # Add callback to log any exceptions
-            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
+            def log_exception(t):
+                if not t.cancelled():
+                    exc = t.exception()
+                    if exc:
+                        logger.error(f"Background sync failed: {exc}")
+            task.add_done_callback(log_exception)
         
         # Return system time corrected by offset
         if tz:
@@ -309,7 +319,7 @@ class AtomicTimeSync:
             "offset_ms": self.offset_ms,
             "last_sync": self._last_sync.isoformat() if self._last_sync else None,
             "atomic_time": self.now().isoformat() if self.is_synced else None,
-            "system_time": datetime.now().isoformat(),
+            "system_time": datetime.now(timezone.utc).isoformat(),
         }
 
 
