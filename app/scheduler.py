@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -118,7 +119,7 @@ async def _preheat_browser(task: GrabTask):
             # Wait until exact sale time, then refresh and grab
             if task.sale_time:
                 sale_dt = datetime.fromisoformat(task.sale_time)
-                now = datetime.now()
+                now = datetime.now(ZoneInfo(Config.TIMEZONE))
                 wait_seconds = (sale_dt - now).total_seconds()
                 if wait_seconds > 0:
                     logger.info("Waiting %.1f seconds until sale time", wait_seconds)
@@ -158,7 +159,7 @@ def schedule_grab(task: GrabTask) -> bool:
         logger.error("Invalid sale_time format: %s", task.sale_time)
         return False
 
-    now = datetime.now()
+    now = datetime.now(ZoneInfo(Config.TIMEZONE))
 
     if task.mode == "browser":
         # Schedule preheat (opens page before sale time)

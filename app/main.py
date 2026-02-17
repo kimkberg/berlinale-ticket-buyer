@@ -5,6 +5,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -184,7 +185,7 @@ async def get_tasks():
 @app.post("/api/tasks")
 async def create_task(req: TaskCreate):
     """Create a new grab task."""
-    now = datetime.now().isoformat()
+    now = datetime.now(ZoneInfo(Config.TIMEZONE)).isoformat()
     task = GrabTask(
         film_id=req.film_id,
         film_title=req.film_title,

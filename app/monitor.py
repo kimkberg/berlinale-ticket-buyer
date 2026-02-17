@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.config import Config
 from app.models import GrabTask
@@ -117,7 +118,7 @@ class TicketMonitor:
         if not self._watches:
             return Config.MONITOR_POLL_INTERVAL
 
-        now = datetime.now()
+        now = datetime.now(ZoneInfo(Config.TIMEZONE))
         golden = timedelta(minutes=Config.MONITOR_GOLDEN_HOUR_MINUTES)
 
         for task in self._watches.values():
