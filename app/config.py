@@ -27,6 +27,7 @@ class Config:
     TICKET_POLL_INTERVAL = 10  # seconds
 
     # Grab settings
+    TICKET_COUNT = 2  # default number of tickets to grab
     GRAB_RETRY_COUNT = 3
     PRE_SALE_WARMUP = 60  # seconds before sale to start browser
     PRE_SALE_OPEN_PAGE = 15  # seconds before sale to open page (optimized from 30s)

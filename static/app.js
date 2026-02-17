@@ -7,9 +7,11 @@ let tasks = [];
 let ticketStatus = {};  // ext_id_screening -> {state, url, text}
 let searchQuery = "";
 let debounceTimer = null;
+let config = { ticket_count: 2 };  // Default fallback, loaded from backend
 
 // === Init ===
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadConfig();
     connectWebSocket();
     loadTasks();
     loadTodayOnSale();
@@ -87,6 +89,20 @@ function handleWSMessage(msg) {
 }
 
 // === API Calls ===
+async function loadConfig() {
+    try {
+        const resp = await fetch("/api/config");
+        if (!resp.ok) {
+            throw new Error(`Config fetch failed with status ${resp.status}`);
+        }
+        const data = await resp.json();
+        config = data;
+        console.log("Loaded config:", config);
+    } catch (e) {
+        console.error(`Failed to load config, using default ticket_count: ${config.ticket_count}`, e);
+    }
+}
+
 async function loadTodayOnSale() {
     showLoading(true);
     try {
@@ -143,7 +159,7 @@ async function createTask(filmData, eventData) {
             sale_time: eventData.sale_time_str || "",
             eventim_url: eventData.ticket_url || "",
             mode: "browser",
-            ticket_count: 2,
+            ticket_count: config.ticket_count,
         };
         const resp = await fetch("/api/tasks", {
             method: "POST",
