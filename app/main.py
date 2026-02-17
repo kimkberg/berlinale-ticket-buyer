@@ -16,6 +16,7 @@ from app.config import Config
 from app.models import GrabTask, StatusMessage, TaskCreate
 from app.monitor import ticket_monitor
 from app.storage import TaskStorage
+from app.time_sync import init_time_sync, get_time_sync
 
 logging.basicConfig(
     level=logging.INFO,
@@ -110,6 +111,10 @@ async def on_monitor_change(task_id: str, new_state: str, ticket_url: str):
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Berlinale Ticket Buyer...")
+    
+    # Initialize time synchronization
+    await init_time_sync()
+    
     scheduler.set_storage(storage)
     scheduler.set_on_task_update(on_task_update)
     scheduler.start_scheduler()
@@ -286,6 +291,24 @@ async def browser_status():
         return {"initialized": False, "logged_in": False, "message": "Browser not started"}
     status = await browser_manager.check_session()
     return {"initialized": True, **status}
+
+
+@app.get("/api/time/status")
+async def time_status():
+    """Get atomic time sync status."""
+    time_sync = get_time_sync()
+    return time_sync.get_status()
+
+
+@app.post("/api/time/sync")
+async def force_time_sync():
+    """Manually trigger time synchronization."""
+    time_sync = get_time_sync()
+    success = await time_sync.sync()
+    return {
+        "success": success,
+        **time_sync.get_status()
+    }
 
 
 # --- WebSocket ---

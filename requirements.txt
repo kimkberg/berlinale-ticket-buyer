@@ -6,3 +6,7 @@ apscheduler>=3.10.4
 httpx>=0.25.0
 pydantic>=2.5.0
 websockets>=12.0
+
+# Optional: for high-precision NTP time sync
+ntplib>=0.4.0
+PySocks>=1.7.1
