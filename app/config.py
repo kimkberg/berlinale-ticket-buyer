@@ -53,6 +53,11 @@ class Config:
     # Proxy settings (optional)
     PROXY_URL = os.environ.get("PROXY_URL", None)  # e.g. "http://proxy:8080" or "socks5://proxy:1080"
 
+    # Time synchronization settings (optional)
+    TIME_SYNC_ENABLED = os.environ.get("TIME_SYNC_ENABLED", "true").lower() == "true"
+    TIME_SYNC_METHOD = os.environ.get("TIME_SYNC_METHOD", "auto")  # "ntp", "http", or "auto"
+    TIME_SYNC_INTERVAL = int(os.environ.get("TIME_SYNC_INTERVAL", "300"))  # seconds between re-syncs
+
 
 class TimingConfig:
     """
