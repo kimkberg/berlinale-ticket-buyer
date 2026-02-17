@@ -143,7 +143,7 @@ async function createTask(filmData, eventData) {
             sale_time: eventData.sale_time_str || "",
             eventim_url: eventData.ticket_url || "",
             mode: "browser",
-            ticket_count: 2,
+            ticket_count: 2,  // Default value - matches Config.TICKET_COUNT in backend (TODO: fetch from API)
         };
         const resp = await fetch("/api/tasks", {
             method: "POST",

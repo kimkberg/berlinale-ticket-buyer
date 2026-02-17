@@ -3,6 +3,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from app.config import Config
+
 
 class Event(BaseModel):
     id: int = 0
@@ -56,7 +58,7 @@ class GrabTask(BaseModel):
     created_at: str = ""
     updated_at: str = ""
     result_message: Optional[str] = None
-    ticket_count: int = 2
+    ticket_count: int = Config.TICKET_COUNT
 
 
 class DayProgramme(BaseModel):
@@ -75,7 +77,7 @@ class TaskCreate(BaseModel):
     sale_time: str = ""
     eventim_url: Optional[str] = None
     mode: str = "browser"
-    ticket_count: int = 2
+    ticket_count: int = Config.TICKET_COUNT
 
 
 class StatusMessage(BaseModel):
