@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from app.config import Config
 from app.models import GrabTask
@@ -43,7 +44,7 @@ class TaskStorage:
         return list(self.tasks)
 
     def update_task(self, task_id: str, **kwargs) -> Optional[GrabTask]:
-        kwargs["updated_at"] = datetime.now().isoformat()
+        kwargs["updated_at"] = datetime.now(ZoneInfo(Config.TIMEZONE)).isoformat()
         for i, task in enumerate(self.tasks):
             if task.id == task_id:
                 updated = task.model_copy(update=kwargs)
