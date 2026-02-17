@@ -10,8 +10,8 @@ let debounceTimer = null;
 let config = { ticket_count: 2 };  // Default fallback, loaded from backend
 
 // === Init ===
-document.addEventListener("DOMContentLoaded", () => {
-    loadConfig();
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadConfig();
     connectWebSocket();
     loadTasks();
     loadTodayOnSale();
@@ -92,11 +92,14 @@ function handleWSMessage(msg) {
 async function loadConfig() {
     try {
         const resp = await fetch("/api/config");
+        if (!resp.ok) {
+            throw new Error(`Config fetch failed with status ${resp.status}`);
+        }
         const data = await resp.json();
         config = data;
         console.log("Loaded config:", config);
     } catch (e) {
-        console.error("Failed to load config, using defaults:", e);
+        console.error(`Failed to load config, using default ticket_count: ${config.ticket_count}`, e);
     }
 }
 
