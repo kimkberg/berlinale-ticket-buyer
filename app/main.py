@@ -180,6 +180,14 @@ async def get_ticket_status():
     return {"tickets": {k: v.model_dump() for k, v in ticket_map.items()}}
 
 
+@app.get("/api/config")
+async def get_config():
+    """Get frontend configuration values."""
+    return {
+        "ticket_count": Config.TICKET_COUNT,
+    }
+
+
 @app.get("/api/tasks")
 async def get_tasks():
     """Get all grab tasks."""
