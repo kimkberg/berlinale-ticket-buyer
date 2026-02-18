@@ -73,10 +73,10 @@ class TimingConfig:
     
     # Racing mode - competitive but humanly possible
     # Range: 80-300ms (fast but realistic human reaction time)
-    RACING_CLICK_MEAN = 180     # ms - fast but realistic human reaction
-    RACING_CLICK_STDDEV = 40    # ms - natural variance
-    RACING_CLICK_MIN = 80       # ms - absolute fastest realistic click
-    RACING_CLICK_MAX = 300      # ms - slower end with occasional hesitation
+    RACING_CLICK_MEAN = 100     # ms - fast but realistic human reaction
+    RACING_CLICK_STDDEV = 20    # ms - natural variance
+    RACING_CLICK_MIN = 50       # ms - absolute fastest realistic click
+    RACING_CLICK_MAX = 150      # ms - slower end with occasional hesitation
     
     # Normal mode - comfortable human interaction
     # Range: 150-600ms (relaxed clicking speed)
@@ -87,10 +87,10 @@ class TimingConfig:
     
     # Page load waits - network and rendering delays
     # Networks are naturally variable, adding variance keeps human appearance
-    PAGE_LOAD_MEAN = 300       # ms - typical page load expectation
-    PAGE_LOAD_STDDEV = 50      # ms - network variance (±25%)
+    PAGE_LOAD_MEAN = 150       # ms - typical page load expectation
+    PAGE_LOAD_STDDEV = 30      # ms - network variance (±25%)
     
     # UI interaction waits - for modals, banners, animations
     # Allows time for UI elements to dismiss and DOM to stabilize
-    UI_INTERACTION_MEAN = 500   # ms - typical UI animation time
-    UI_INTERACTION_STDDEV = 100 # ms - variance in UI rendering
+    UI_INTERACTION_MEAN = 150   # ms - typical UI animation time
+    UI_INTERACTION_STDDEV = 30 # ms - variance in UI rendering

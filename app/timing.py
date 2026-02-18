@@ -126,7 +126,7 @@ class HumanTiming:
         delay = rng.gauss(mean, stddev)
         
         # Keep within reasonable bounds for UI animations
-        min_delay = 300
+        min_delay = 50
         max_delay = 700
         delay = max(min_delay, min(max_delay, delay))
         
@@ -154,7 +154,7 @@ class HumanTiming:
         
         if steps is None:
             # More steps for longer distances, minimum 8, max ~25
-            steps = max(8, min(25, int(distance / 30)))
+            steps = max(2, min(15, int(distance / 60)))
         
         rng = _get_random()
         
