@@ -146,12 +146,45 @@ class BrowserManager:
             raise
 
     async def open_login_page(self) -> bool:
-        """Open Eventim login page for manual user login."""
+        """Open Eventim login page for manual user login.
+        
+        If a page is already open, brings it to front instead of reloading.
+        This preserves the user's session and any login state.
+        """
         try:
             await self.init_browser()
-            page = await self.get_page()
-            await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
-            logger.info("Opened Eventim login page")
+            
+            # Check if we already have pages open
+            pages = self._context.pages
+            if pages:
+                # Get the first page and bring it to front
+                page = pages[0]
+                await page.bring_to_front()
+                
+                # Only navigate if not already on a relevant page
+                current_url = page.url
+                if not any(domain in current_url.lower() for domain in ['eventim.de', 'about:blank']):
+                    # On a different domain, navigate to login
+                    await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                    logger.info("Navigated to Eventim login page")
+                elif 'about:blank' in current_url:
+                    # Blank page, navigate to login
+                    await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                    logger.info("Navigated to Eventim login page from blank page")
+                else:
+                    # Already on Eventim, just bring to front
+                    logger.info("Brought existing Eventim page to front (no reload)")
+            else:
+                # No pages open, create one and navigate
+                page = await self._context.new_page()
+                try:
+                    from playwright_stealth import stealth_async
+                    await stealth_async(page)
+                except ImportError:
+                    pass
+                await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                logger.info("Created new page and opened Eventim login page")
+            
             return True
         except Exception:
             logger.exception("Failed to open login page")
