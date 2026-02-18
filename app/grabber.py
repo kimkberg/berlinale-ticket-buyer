@@ -81,69 +81,28 @@ class BrowserManager:
         """Get the main browser page, creating one if needed."""
         if not self._initialized:
             await self.init_browser()
-        
+        pages = self._context.pages
+        if pages:
+            return pages[0]
+        page = await self._context.new_page()
         try:
-            pages = self._context.pages
-            if pages:
-                return pages[0]
-            page = await self._context.new_page()
-            try:
-                from playwright_stealth import stealth_async
-                await stealth_async(page)
-            except ImportError:
-                pass
-            return page
-        except Exception as e:
-            # Browser context was closed, reinitialize
-            error_str = str(e).lower()
-            if "closed" in error_str or "target" in error_str:
-                logger.warning("Browser context was closed, reinitializing...")
-                self._initialized = False
-                self._context = None
-                await self.init_browser()
-                # Retry once after reinitializing
-                pages = self._context.pages
-                if pages:
-                    return pages[0]
-                page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
-                return page
-            raise
+            from playwright_stealth import stealth_async
+            await stealth_async(page)
+        except ImportError:
+            pass
+        return page
 
     async def new_page(self) -> "Page":
         """Create a new browser tab."""
         if not self._initialized:
             await self.init_browser()
-        
+        page = await self._context.new_page()
         try:
-            page = await self._context.new_page()
-            try:
-                from playwright_stealth import stealth_async
-                await stealth_async(page)
-            except ImportError:
-                pass
-            return page
-        except Exception as e:
-            # Browser context was closed, reinitialize
-            error_str = str(e).lower()
-            if "closed" in error_str or "target" in error_str:
-                logger.warning("Browser context was closed, reinitializing...")
-                self._initialized = False
-                self._context = None
-                await self.init_browser()
-                # Retry once after reinitializing
-                page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
-                return page
-            raise
+            from playwright_stealth import stealth_async
+            await stealth_async(page)
+        except ImportError:
+            pass
+        return page
 
     async def open_login_page(self) -> bool:
         """Open Eventim login page for manual user login."""
