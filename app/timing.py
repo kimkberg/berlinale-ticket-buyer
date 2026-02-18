@@ -97,9 +97,9 @@ class HumanTiming:
         rng = _get_random()
         delay = rng.gauss(expected_ms, stddev)
 
-        # Keep reasonable bounds (at least 100ms, max 3x expected)
-        min_delay = max(100, expected_ms * 0.5)
-        max_delay = expected_ms * 2.0
+        # Keep reasonable bounds (at least 50ms, max 3x expected)
+        min_delay = TimingConfig.PAGE_LOAD_MIN
+        max_delay = TimingConfig.PAGE_LOAD_MAX
         delay = max(min_delay, min(max_delay, delay))
 
         return delay
@@ -126,8 +126,8 @@ class HumanTiming:
         delay = rng.gauss(mean, stddev)
         
         # Keep within reasonable bounds for UI animations
-        min_delay = 50
-        max_delay = 700
+        min_delay = TimingConfig.UI_INTERACTION_MIN
+        max_delay = TimingConfig.UI_INTERACTION_MAX
         delay = max(min_delay, min(max_delay, delay))
         
         return delay
