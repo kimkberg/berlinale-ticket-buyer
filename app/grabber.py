@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
@@ -381,13 +382,23 @@ class TicketGrabber:
         if not task.eventim_url:
             return {"success": False, "message": "No Eventim URL available"}
 
+        # Start timing for debug mode
+        operation_start = time.time() if Config.DEBUG_MODE else None
+
         async def _report(status: str, msg: str):
             if on_status:
                 await on_status(status, msg)
-            logger.info("Grab [%s] %s: %s", task.ext_id_screening, status, msg)
+            # Add timing prefix if debug mode is active
+            if Config.DEBUG_MODE and operation_start:
+                elapsed_total = (time.time() - operation_start) * 1000
+                log_msg = f"[{elapsed_total:.1f}ms] Grab [{task.ext_id_screening}] {status}: {msg}"
+            else:
+                log_msg = f"Grab [{task.ext_id_screening}] {status}: {msg}"
+            logger.info(log_msg)
 
         page = None
         try:
+            step_start = time.time() if Config.DEBUG_MODE else None
             await _report("grabbing", "Opening Eventim page...")
             page = await self.browser.new_page()
 
@@ -399,12 +410,20 @@ class TicketGrabber:
                 await _report("grabbing", "Retrying navigation...")
                 await page.goto(task.eventim_url, wait_until="commit", timeout=30000)
 
+            if Config.DEBUG_MODE and step_start:
+                elapsed_step = (time.time() - step_start) * 1000
+                logger.info("  → Page loaded (took %.1fms)", elapsed_step)
+            
             page_wait = HumanTiming.get_page_wait(1000)
             await page.wait_for_timeout(page_wait)
             await _report("grabbing", "Page loaded, handling consent & finding tickets...")
 
             # Step 0: Dismiss cookie consent banner if present
+            step_start = time.time() if Config.DEBUG_MODE else None
             await self._dismiss_cookie_banner(page)
+            if Config.DEBUG_MODE and step_start:
+                elapsed_step = (time.time() - step_start) * 1000
+                logger.info("  → Cookie banner handled (took %.1fms)", elapsed_step)
 
             # Step 1: Try the Eventim purchase flow
             result = await self._eventim_purchase_flow(page, task.ticket_count, _report)
@@ -572,16 +591,28 @@ class TicketGrabber:
           <div class="js-stepper-amount-text">0</div>
         The first stepper row is for full-price tickets.
         """
+        step_start = time.time() if Config.DEBUG_MODE else None
+        
         # Primary: Eventim's js-stepper-more button (the "+" button)
         plus_buttons = await page.query_selector_all('button.js-stepper-more')
         for btn in plus_buttons:
             try:
                 if await btn.is_visible():
-                    for _ in range(count):
+                    for i in range(count):
+                        click_start = time.time() if Config.DEBUG_MODE else None
                         await self._human_click(page, btn)
+                        if Config.DEBUG_MODE and click_start:
+                            click_time = (time.time() - click_start) * 1000
+                            logger.info("    → Clicked js-stepper-more (%.1fms)", click_time)
                         click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
+                        if Config.DEBUG_MODE:
+                            logger.info("    → Click delay: %dms", click_delay)
                         await page.wait_for_timeout(click_delay)
-                    logger.info("Clicked js-stepper-more %d times", count)
+                    if Config.DEBUG_MODE and step_start:
+                        elapsed = (time.time() - step_start) * 1000
+                        logger.info("  ✓ Quantity set to %d (took %.1fms)", count, elapsed)
+                    else:
+                        logger.info("Clicked js-stepper-more %d times", count)
                     return True
             except Exception:
                 continue
@@ -595,7 +626,11 @@ class TicketGrabber:
                         await self._human_click(page, btn)
                         click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
                         await page.wait_for_timeout(click_delay)
-                    logger.info("Clicked more-tickets %d times", count)
+                    if Config.DEBUG_MODE and step_start:
+                        elapsed = (time.time() - step_start) * 1000
+                        logger.info("  ✓ Quantity set to %d (took %.1fms)", count, elapsed)
+                    else:
+                        logger.info("Clicked more-tickets %d times", count)
                     return True
             except Exception:
                 pass
@@ -609,7 +644,11 @@ class TicketGrabber:
                         await self._human_click(page, btn)
                         click_delay = HumanTiming.get_click_delay(TimingConfig.TIMING_MODE)
                         await page.wait_for_timeout(click_delay)
-                    logger.info("Clicked increase-amount %d times", count)
+                    if Config.DEBUG_MODE and step_start:
+                        elapsed = (time.time() - step_start) * 1000
+                        logger.info("  ✓ Quantity set to %d (took %.1fms)", count, elapsed)
+                    else:
+                        logger.info("Clicked increase-amount %d times", count)
                     return True
             except Exception:
                 pass
@@ -623,6 +662,8 @@ class TicketGrabber:
           <button class="btn js-stepper-action"> "N Tickets, € XX.XX" </button>
         This button submits the form to checkout.html.
         """
+        step_start = time.time() if Config.DEBUG_MODE else None
+        
         # Priority 1: Eventim's js-stepper-action button (the cart button)
         btn = await page.query_selector('button.js-stepper-action')
         if btn:
@@ -633,7 +674,11 @@ class TicketGrabber:
                     if "0 Ticket" not in text:
                         await btn.scroll_into_view_if_needed()
                         await self._human_click(page, btn)
-                        logger.info("Clicked js-stepper-action: '%s'", text)
+                        if Config.DEBUG_MODE and step_start:
+                            elapsed = (time.time() - step_start) * 1000
+                            logger.info("  ✓ Buy button clicked (took %.1fms)", elapsed)
+                        else:
+                            logger.info("Clicked js-stepper-action: '%s'", text)
                         return True
                     else:
                         logger.warning("Cart button shows 0 tickets: '%s'", text)
@@ -648,7 +693,11 @@ class TicketGrabber:
                 if "0 Ticket" not in text and "Ticket" in text:
                     await ticket_btn.scroll_into_view_if_needed()
                     await self._human_click(page, ticket_btn)
-                    logger.info("Clicked ticket button: '%s'", text)
+                    if Config.DEBUG_MODE and step_start:
+                        elapsed = (time.time() - step_start) * 1000
+                        logger.info("  ✓ Buy button clicked (took %.1fms)", elapsed)
+                    else:
+                        logger.info("Clicked ticket button: '%s'", text)
                     return True
         except Exception:
             pass
@@ -668,7 +717,11 @@ class TicketGrabber:
                 if b and await b.is_visible():
                     await b.scroll_into_view_if_needed()
                     await self._human_click(page, b)
-                    logger.info("Clicked buy button: %s", sel)
+                    if Config.DEBUG_MODE and step_start:
+                        elapsed = (time.time() - step_start) * 1000
+                        logger.info("  ✓ Buy button clicked (took %.1fms)", elapsed)
+                    else:
+                        logger.info("Clicked buy button: %s", sel)
                     return True
             except Exception:
                 continue

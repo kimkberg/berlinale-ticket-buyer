@@ -102,6 +102,55 @@ body {
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 .btn-xs { padding: 2px 8px; font-size: 11px; }
 
+.btn-debug {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+.btn-debug:hover { 
+    border-color: var(--yellow); 
+    background: rgba(234, 179, 8, 0.1); 
+    color: var(--yellow);
+}
+.btn-debug.active {
+    background: rgba(234, 179, 8, 0.15);
+    border-color: var(--yellow);
+    color: var(--yellow);
+}
+
+.btn-simulate {
+    background: rgba(234, 179, 8, 0.15);
+    color: var(--yellow);
+    border: 1px solid var(--yellow);
+}
+.btn-simulate:hover {
+    background: var(--yellow);
+    color: #000;
+}
+
+.debug-indicator {
+    display: flex;
+    align-items: center;
+    margin-left: 12px;
+}
+
+.debug-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: rgba(234, 179, 8, 0.15);
+    color: var(--yellow);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: pulse-debug 2s ease-in-out infinite;
+}
+
+@keyframes pulse-debug {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
 /* === Date Tabs === */
 .date-tabs {
     display: flex;

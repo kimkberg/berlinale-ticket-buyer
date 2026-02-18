@@ -185,6 +185,8 @@ async def get_config():
     """Get frontend configuration values."""
     return {
         "ticket_count": Config.TICKET_COUNT,
+        "festival_start_date": Config.FESTIVAL_START_DATE,
+        "festival_end_date": Config.FESTIVAL_END_DATE,
     }
 
 
