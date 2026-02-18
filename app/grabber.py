@@ -226,17 +226,38 @@ class BrowserManager:
             pass
 
     async def check_session(self) -> dict:
-        """Check if the current Eventim session is valid."""
+        """Check if the current Eventim session is valid.
+        
+        Avoids unnecessary page reloads by checking the current page first.
+        Only navigates if on about:blank or if session status cannot be determined.
+        """
         try:
             if not self._initialized:
                 return {"logged_in": False, "message": "Browser not started"}
 
             page = await self.get_page()
-            await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
-            page_wait = HumanTiming.get_page_wait(1000)
-            await page.wait_for_timeout(page_wait)
-
-            url = page.url
+            current_url = page.url
+            
+            # If on about:blank, navigate to Eventim to check session
+            if current_url == BLANK_PAGE_URL:
+                await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                page_wait = HumanTiming.get_page_wait(1000)
+                await page.wait_for_timeout(page_wait)
+                current_url = page.url
+                logger.info("Navigated from blank page to check session")
+            # If already on Eventim domain, check status from current page without reload
+            elif self._is_eventim_domain(current_url):
+                logger.info("Checking session status from current Eventim page (no reload)")
+            else:
+                # On a different domain, navigate to Eventim to check session
+                await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                page_wait = HumanTiming.get_page_wait(1000)
+                await page.wait_for_timeout(page_wait)
+                current_url = page.url
+                logger.info("Navigated from different domain to check session")
+            
+            # Now check login status from the current page
+            url = current_url
             if "/login" in url.lower() or "/signin" in url.lower():
                 return {"logged_in": False, "message": "Not logged in"}
 
