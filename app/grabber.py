@@ -10,6 +10,9 @@ from app.timing import HumanTiming
 
 logger = logging.getLogger(__name__)
 
+# Browser navigation constants
+BLANK_PAGE_URL = "about:blank"
+
 
 class BrowserManager:
     """Manages a persistent Playwright browser context for Eventim sessions."""
@@ -20,6 +23,11 @@ class BrowserManager:
         self._context = None
         self._initialized = False
         self._init_lock = asyncio.Lock()
+        # Extract domain from config URL for consistency
+        # e.g., "https://www.eventim.de/myAccount" -> "eventim.de"
+        from urllib.parse import urlparse
+        parsed = urlparse(Config.EVENTIM_LOGIN_URL)
+        self._eventim_domain = parsed.netloc.replace("www.", "")
 
     async def init_browser(self) -> None:
         """Start Playwright and create a persistent browser context."""
@@ -138,6 +146,11 @@ class BrowserManager:
         try:
             await self.init_browser()
             
+            # Ensure context was successfully initialized
+            if not self._context:
+                logger.error("Browser context not initialized")
+                return False
+            
             # Check if we already have pages open
             pages = self._context.pages
             if pages:
@@ -149,11 +162,11 @@ class BrowserManager:
                 current_url = page.url
                 
                 # Check in order: blank page, then Eventim domain, then other domains
-                if current_url == 'about:blank':
+                if current_url == BLANK_PAGE_URL:
                     # Blank page, navigate to login
                     await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
                     logger.info("Navigated to Eventim login page from blank page")
-                elif 'eventim.de' in current_url.lower():
+                elif self._eventim_domain in current_url.lower():
                     # Already on Eventim, just bring to front
                     logger.info("Brought existing Eventim page to front (no reload)")
                 else:
