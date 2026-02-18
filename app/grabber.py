@@ -25,9 +25,26 @@ class BrowserManager:
         self._initialized = False
         self._init_lock = asyncio.Lock()
         # Extract domain from config URL for consistency
-        # e.g., "https://www.eventim.de/myAccount" -> "eventim.de"
-        parsed = urlparse(Config.EVENTIM_LOGIN_URL)
-        self._eventim_domain = parsed.netloc.replace("www.", "")
+        self._eventim_domain = self._extract_domain(Config.EVENTIM_LOGIN_URL)
+    
+    @staticmethod
+    def _extract_domain(url: str) -> str:
+        """Extract the domain from a URL in a consistent, secure way.
+        
+        Returns the domain in lowercase without the 'www.' prefix.
+        Examples:
+            "https://www.eventim.de/myAccount" -> "eventim.de"
+            "https://eventim.de/" -> "eventim.de"
+        """
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+            # Only remove 'www.' if it's at the start, to avoid issues like 'wwww.'
+            if domain.startswith("www."):
+                domain = domain[4:]  # Remove 'www.' prefix
+            return domain
+        except Exception:
+            return ""
 
     async def init_browser(self) -> None:
         """Start Playwright and create a persistent browser context."""
@@ -191,10 +208,8 @@ class BrowserManager:
         Uses proper URL parsing to avoid false positives from substring matching.
         """
         try:
-            parsed = urlparse(url)
-            # Compare domains without www prefix
-            current_domain = parsed.netloc.replace("www.", "").lower()
-            return current_domain == self._eventim_domain.lower()
+            current_domain = self._extract_domain(url)
+            return current_domain == self._eventim_domain
         except Exception:
             return False
     
