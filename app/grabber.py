@@ -3,11 +3,15 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from app.config import Config, TimingConfig
 from app.models import GrabTask
 from app.timing import HumanTiming
+
+if TYPE_CHECKING:
+    from playwright.async_api import Page
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +106,7 @@ class BrowserManager:
             self._initialized = True
             logger.info("Browser initialized with persistent profile at %s", profile_dir)
 
-    async def get_page(self) -> "Page":
+    async def get_page(self) -> Page:
         """Get the main browser page, creating one if needed."""
         if not self._initialized:
             await self.init_browser()
@@ -131,7 +135,7 @@ class BrowserManager:
                 return page
             raise
 
-    async def new_page(self) -> "Page":
+    async def new_page(self) -> Page:
         """Create a new browser tab."""
         if not self._initialized:
             await self.init_browser()
@@ -213,7 +217,7 @@ class BrowserManager:
         except Exception:
             return False
     
-    async def _apply_stealth(self, page: "Page") -> None:
+    async def _apply_stealth(self, page: Page) -> None:
         """Apply stealth mode to a page to avoid detection."""
         try:
             from playwright_stealth import stealth_async
