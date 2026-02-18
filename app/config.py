@@ -44,6 +44,8 @@ class Config:
         "start": date(2026, 2, 12),
         "end": date(2026, 2, 22),
     }
+    FESTIVAL_START_DATE = "2026-02-12"
+    FESTIVAL_END_DATE = "2026-02-22"
 
     # Sale schedule
     SALE_ADVANCE_DAYS = 3
@@ -58,6 +60,9 @@ class Config:
     TIME_SYNC_ENABLED = os.environ.get("TIME_SYNC_ENABLED", "true").lower() == "true"
     TIME_SYNC_METHOD = os.environ.get("TIME_SYNC_METHOD", "auto")  # "ntp", "http", or "auto"
     TIME_SYNC_INTERVAL = int(os.environ.get("TIME_SYNC_INTERVAL", "300"))  # seconds between re-syncs
+    
+    # Debug settings
+    DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
 
 class TimingConfig:

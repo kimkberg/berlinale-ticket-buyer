@@ -13,8 +13,12 @@
             <div class="header-left">
                 <h1 class="logo">Berlinale 2026</h1>
                 <span class="subtitle">Ticket Buyer</span>
+                <div id="debug-indicator" class="debug-indicator" style="display: none;">
+                    <span class="debug-badge">🧪 DEBUG MODE</span>
+                </div>
             </div>
             <div class="header-right">
+                <button id="btn-debug-mode" class="btn btn-debug" onclick="toggleDebugMode()">🧪 Debug: OFF</button>
                 <button id="btn-login" class="btn btn-outline" onclick="loginEventim()">Login Eventim</button>
                 <span id="session-status" class="session-badge offline">Not connected</span>
             </div>

@@ -7,10 +7,16 @@ let tasks = [];
 let ticketStatus = {};  // ext_id_screening -> {state, url, text}
 let searchQuery = "";
 let debounceTimer = null;
-let config = { ticket_count: 2 };  // Default fallback, loaded from backend
+let config = { 
+    ticket_count: 2,
+    festival_start_date: "2026-02-12",
+    festival_end_date: "2026-02-22"
+};  // Default fallback, loaded from backend
+let debugMode = false;  // Debug mode state
 
 // === Init ===
 document.addEventListener("DOMContentLoaded", async () => {
+    loadDebugMode();
     await loadConfig();
     connectWebSocket();
     loadTasks();
@@ -238,6 +244,58 @@ async function checkBrowserStatus() {
     }
 }
 
+// === Debug Mode ===
+function loadDebugMode() {
+    const stored = localStorage.getItem('debugMode');
+    debugMode = stored === 'true';
+    updateDebugUI();
+}
+
+function toggleDebugMode() {
+    debugMode = !debugMode;
+    localStorage.setItem('debugMode', debugMode.toString());
+    updateDebugUI();
+    // Refresh current view to show/hide simulate buttons
+    if (currentTab === "today-on-sale") {
+        loadTodayOnSale();
+    } else if (currentTab === "all-films") {
+        loadAllFilms();
+    } else {
+        loadProgrammeDay(currentTab);
+    }
+    showToast(`Debug mode ${debugMode ? 'enabled' : 'disabled'}`, "info");
+}
+
+function updateDebugUI() {
+    const btn = document.getElementById("btn-debug-mode");
+    const indicator = document.getElementById("debug-indicator");
+    if (btn) {
+        btn.textContent = debugMode ? "🧪 Debug: ON" : "🧪 Debug: OFF";
+        btn.classList.toggle("active", debugMode);
+    }
+    if (indicator) {
+        indicator.style.display = debugMode ? "flex" : "none";
+    }
+}
+
+async function simulateGoingLive(filmData, eventData) {
+    if (typeof filmData === "string") filmData = JSON.parse(filmData);
+    if (typeof eventData === "string") eventData = JSON.parse(eventData);
+    
+    const now = new Date();
+    const goLiveTime = new Date(now.getTime() + 35000); // 35 seconds from now
+    const saleTimeStr = goLiveTime.toISOString();
+    
+    const testEvent = {
+        ...eventData,
+        sale_time_str: saleTimeStr
+    };
+    
+    await createTask(filmData, testEvent);
+    showToast("🧪 Debug simulation started! Will grab in 35s...", "info");
+}
+
+
 async function refreshTicketStatus() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "refresh_tickets" }));
@@ -247,16 +305,24 @@ async function refreshTicketStatus() {
 // === Date Tabs ===
 function buildDateTabs() {
     const tabs = document.getElementById("date-tabs");
-    // Festival: Feb 12-22
-    const start = new Date(2026, 1, 12);
-    const end = new Date(2026, 1, 22);
+    
+    // Parse festival dates from config and create UTC dates
+    const startParts = config.festival_start_date.split('-').map(v => parseInt(v));
+    const endParts = config.festival_end_date.split('-').map(v => parseInt(v));
+    const start = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2]));
+    const end = new Date(Date.UTC(endParts[0], endParts[1] - 1, endParts[2]));
 
     let html = '<button class="date-tab active" data-tab="today-on-sale" onclick="switchTab(this, \'today-on-sale\')">Today On Sale</button>';
     html += '<button class="date-tab" data-tab="all-films" onclick="switchTab(this, \'all-films\')">All Films</button>';
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
         const iso = d.toISOString().slice(0, 10);
-        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric", weekday: "short" });
+        const label = new Date(iso).toLocaleDateString("en-US", { 
+            month: "short", 
+            day: "numeric", 
+            weekday: "short",
+            timeZone: "UTC"
+        });
         html += `<button class="date-tab" data-tab="${iso}" onclick="switchTab(this, '${iso}')">${label}</button>`;
     }
 
@@ -507,8 +573,16 @@ function renderFilmCard(film) {
         } else if (state === "available" && ev.ticket_url) {
             actionButtons = `<a href="${escAttr(ev.ticket_url)}" target="_blank" class="btn btn-success btn-sm">Buy Now</a>` +
                 `<button class="btn btn-primary btn-sm" onclick='scheduleGrab(${filmDataStr}, ${eventDataStr})'>Schedule Grab</button>`;
+            // Add simulate button in debug mode
+            if (debugMode) {
+                actionButtons += `<button class="btn btn-simulate btn-sm" onclick='simulateGoingLive(${filmDataStr}, ${eventDataStr})'>🧪 Simulate</button>`;
+            }
         } else {
             actionButtons = `<button class="btn btn-primary btn-sm" onclick='scheduleGrab(${filmDataStr}, ${eventDataStr})'>Schedule Grab</button>`;
+            // Add simulate button in debug mode for pending tickets
+            if (debugMode) {
+                actionButtons += `<button class="btn btn-simulate btn-sm" onclick='simulateGoingLive(${filmDataStr}, ${eventDataStr})'>🧪 Simulate</button>`;
+            }
         }
 
         // Sale countdown: attach data attribute for live updates
