@@ -44,8 +44,9 @@ class Config:
         "start": date(2026, 2, 12),
         "end": date(2026, 2, 22),
     }
-    FESTIVAL_START_DATE = "2026-02-12"
-    FESTIVAL_END_DATE = "2026-02-22"
+    # String representations for API
+    FESTIVAL_START_DATE = FESTIVAL_DATES["start"].isoformat()
+    FESTIVAL_END_DATE = FESTIVAL_DATES["end"].isoformat()
 
     # Sale schedule
     SALE_ADVANCE_DAYS = 3

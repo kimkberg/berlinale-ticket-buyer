@@ -307,10 +307,8 @@ function buildDateTabs() {
     const tabs = document.getElementById("date-tabs");
     
     // Parse festival dates from config and create UTC dates
-    const startParts = config.festival_start_date.split('-').map(v => parseInt(v));
-    const endParts = config.festival_end_date.split('-').map(v => parseInt(v));
-    const start = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2]));
-    const end = new Date(Date.UTC(endParts[0], endParts[1] - 1, endParts[2]));
+    const start = new Date(config.festival_start_date + 'T00:00:00Z');
+    const end = new Date(config.festival_end_date + 'T00:00:00Z');
 
     let html = '<button class="date-tab active" data-tab="today-on-sale" onclick="switchTab(this, \'today-on-sale\')">Today On Sale</button>';
     html += '<button class="date-tab" data-tab="all-films" onclick="switchTab(this, \'all-films\')">All Films</button>';

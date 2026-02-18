@@ -388,11 +388,13 @@ class TicketGrabber:
         async def _report(status: str, msg: str):
             if on_status:
                 await on_status(status, msg)
+            # Add timing prefix if debug mode is active
             if Config.DEBUG_MODE and operation_start:
                 elapsed_total = (time.time() - operation_start) * 1000
-                logger.info("[%.1fms] Grab [%s] %s: %s", elapsed_total, task.ext_id_screening, status, msg)
+                log_msg = f"[{elapsed_total:.1f}ms] Grab [{task.ext_id_screening}] {status}: {msg}"
             else:
-                logger.info("Grab [%s] %s: %s", task.ext_id_screening, status, msg)
+                log_msg = f"Grab [{task.ext_id_screening}] {status}: {msg}"
+            logger.info(log_msg)
 
         page = None
         try:
