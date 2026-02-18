@@ -87,11 +87,7 @@ class BrowserManager:
             if pages:
                 return pages[0]
             page = await self._context.new_page()
-            try:
-                from playwright_stealth import stealth_async
-                await stealth_async(page)
-            except ImportError:
-                pass
+            await self._apply_stealth(page)
             return page
         except Exception as e:
             # Browser context was closed, reinitialize
@@ -106,11 +102,7 @@ class BrowserManager:
                 if pages:
                     return pages[0]
                 page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
+                await self._apply_stealth(page)
                 return page
             raise
 
@@ -121,11 +113,7 @@ class BrowserManager:
         
         try:
             page = await self._context.new_page()
-            try:
-                from playwright_stealth import stealth_async
-                await stealth_async(page)
-            except ImportError:
-                pass
+            await self._apply_stealth(page)
             return page
         except Exception as e:
             # Browser context was closed, reinitialize
@@ -137,11 +125,7 @@ class BrowserManager:
                 await self.init_browser()
                 # Retry once after reinitializing
                 page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
+                await self._apply_stealth(page)
                 return page
             raise
 
@@ -163,25 +147,23 @@ class BrowserManager:
                 
                 # Only navigate if not already on a relevant page
                 current_url = page.url
-                if not any(domain in current_url.lower() for domain in ['eventim.de', 'about:blank']):
-                    # On a different domain, navigate to login
-                    await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
-                    logger.info("Navigated to Eventim login page")
-                elif 'about:blank' in current_url:
+                
+                # Check in order: blank page, then Eventim domain, then other domains
+                if current_url == 'about:blank':
                     # Blank page, navigate to login
                     await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
                     logger.info("Navigated to Eventim login page from blank page")
-                else:
+                elif 'eventim.de' in current_url.lower():
                     # Already on Eventim, just bring to front
                     logger.info("Brought existing Eventim page to front (no reload)")
+                else:
+                    # On a different domain, navigate to login
+                    await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                    logger.info("Navigated to Eventim login page")
             else:
                 # No pages open, create one and navigate
                 page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
+                await self._apply_stealth(page)
                 await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
                 logger.info("Created new page and opened Eventim login page")
             
@@ -189,6 +171,14 @@ class BrowserManager:
         except Exception:
             logger.exception("Failed to open login page")
             return False
+    
+    async def _apply_stealth(self, page: "Page") -> None:
+        """Apply stealth mode to a page to avoid detection."""
+        try:
+            from playwright_stealth import stealth_async
+            await stealth_async(page)
+        except ImportError:
+            pass
 
     async def check_session(self) -> dict:
         """Check if the current Eventim session is valid."""
