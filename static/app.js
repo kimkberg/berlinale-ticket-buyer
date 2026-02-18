@@ -16,6 +16,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadTasks();
     loadTodayOnSale();
     buildDateTabs();
+    // Check browser status on page load (read-only, does not trigger login)
+    // Login is only triggered by explicit user action (clicking "Login Eventim" button)
     checkBrowserStatus();
     setupSearch();
     // Auto-refresh ticket status every 10 seconds
@@ -198,6 +200,9 @@ async function runTaskNow(taskId) {
     }
 }
 
+// Login is triggered ONLY by explicit user action (button click).
+// The backend will bring existing browser to front if already open,
+// rather than reloading the page (preserves session state).
 async function loginEventim() {
     try {
         const resp = await fetch("/api/browser/login", { method: "POST" });

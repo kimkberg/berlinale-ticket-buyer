@@ -3,12 +3,20 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from app.config import Config, TimingConfig
 from app.models import GrabTask
 from app.timing import HumanTiming
 
+if TYPE_CHECKING:
+    from playwright.async_api import Page
+
 logger = logging.getLogger(__name__)
+
+# Browser navigation constants
+BLANK_PAGE_URL = "about:blank"
 
 
 class BrowserManager:
@@ -20,6 +28,27 @@ class BrowserManager:
         self._context = None
         self._initialized = False
         self._init_lock = asyncio.Lock()
+        # Extract domain from config URL for consistency
+        self._eventim_domain = self._extract_domain(Config.EVENTIM_LOGIN_URL)
+    
+    @staticmethod
+    def _extract_domain(url: str) -> str:
+        """Extract the domain from a URL in a consistent, secure way.
+        
+        Returns the domain in lowercase without the 'www.' prefix.
+        Examples:
+            "https://www.eventim.de/myAccount" -> "eventim.de"
+            "https://eventim.de/" -> "eventim.de"
+        """
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+            # Only remove 'www.' if it's at the start, to avoid issues like 'wwww.'
+            if domain.startswith("www."):
+                domain = domain[4:]  # Remove 'www.' prefix
+            return domain
+        except Exception:
+            return ""
 
     async def init_browser(self) -> None:
         """Start Playwright and create a persistent browser context."""
@@ -77,7 +106,7 @@ class BrowserManager:
             self._initialized = True
             logger.info("Browser initialized with persistent profile at %s", profile_dir)
 
-    async def get_page(self) -> "Page":
+    async def get_page(self) -> Page:
         """Get the main browser page, creating one if needed."""
         if not self._initialized:
             await self.init_browser()
@@ -87,11 +116,7 @@ class BrowserManager:
             if pages:
                 return pages[0]
             page = await self._context.new_page()
-            try:
-                from playwright_stealth import stealth_async
-                await stealth_async(page)
-            except ImportError:
-                pass
+            await self._apply_stealth(page)
             return page
         except Exception as e:
             # Browser context was closed, reinitialize
@@ -106,26 +131,18 @@ class BrowserManager:
                 if pages:
                     return pages[0]
                 page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
+                await self._apply_stealth(page)
                 return page
             raise
 
-    async def new_page(self) -> "Page":
+    async def new_page(self) -> Page:
         """Create a new browser tab."""
         if not self._initialized:
             await self.init_browser()
         
         try:
             page = await self._context.new_page()
-            try:
-                from playwright_stealth import stealth_async
-                await stealth_async(page)
-            except ImportError:
-                pass
+            await self._apply_stealth(page)
             return page
         except Exception as e:
             # Browser context was closed, reinitialize
@@ -137,25 +154,76 @@ class BrowserManager:
                 await self.init_browser()
                 # Retry once after reinitializing
                 page = await self._context.new_page()
-                try:
-                    from playwright_stealth import stealth_async
-                    await stealth_async(page)
-                except ImportError:
-                    pass
+                await self._apply_stealth(page)
                 return page
             raise
 
     async def open_login_page(self) -> bool:
-        """Open Eventim login page for manual user login."""
+        """Open Eventim login page for manual user login.
+        
+        If a page is already open, brings it to front instead of reloading.
+        This preserves the user's session and any login state.
+        """
         try:
             await self.init_browser()
-            page = await self.get_page()
-            await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
-            logger.info("Opened Eventim login page")
+            
+            # Ensure context was successfully initialized
+            if not self._context:
+                logger.error("Browser context not initialized")
+                return False
+            
+            # Check if we already have pages open
+            pages = self._context.pages
+            if pages:
+                # Get the first page and bring it to front
+                page = pages[0]
+                await page.bring_to_front()
+                
+                # Only navigate if not already on a relevant page
+                current_url = page.url
+                
+                # Check in order: blank page, then Eventim domain, then other domains
+                if current_url == BLANK_PAGE_URL:
+                    # Blank page, navigate to login
+                    await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                    logger.info("Navigated to Eventim login page from blank page")
+                elif self._is_eventim_domain(current_url):
+                    # Already on Eventim, just bring to front
+                    logger.info("Brought existing Eventim page to front (no reload)")
+                else:
+                    # On a different domain, navigate to login
+                    await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                    logger.info("Navigated to Eventim login page")
+            else:
+                # No pages open, create one and navigate
+                page = await self._context.new_page()
+                await self._apply_stealth(page)
+                await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
+                logger.info("Created new page and opened Eventim login page")
+            
             return True
         except Exception:
             logger.exception("Failed to open login page")
             return False
+    
+    def _is_eventim_domain(self, url: str) -> bool:
+        """Check if the given URL is on the Eventim domain.
+        
+        Uses proper URL parsing to avoid false positives from substring matching.
+        """
+        try:
+            current_domain = self._extract_domain(url)
+            return current_domain == self._eventim_domain
+        except Exception:
+            return False
+    
+    async def _apply_stealth(self, page: Page) -> None:
+        """Apply stealth mode to a page to avoid detection."""
+        try:
+            from playwright_stealth import stealth_async
+            await stealth_async(page)
+        except ImportError:
+            pass
 
     async def check_session(self) -> dict:
         """Check if the current Eventim session is valid."""
