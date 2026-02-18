@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.config import Config, TimingConfig
 from app.models import GrabTask
@@ -25,7 +26,6 @@ class BrowserManager:
         self._init_lock = asyncio.Lock()
         # Extract domain from config URL for consistency
         # e.g., "https://www.eventim.de/myAccount" -> "eventim.de"
-        from urllib.parse import urlparse
         parsed = urlparse(Config.EVENTIM_LOGIN_URL)
         self._eventim_domain = parsed.netloc.replace("www.", "")
 
@@ -166,7 +166,7 @@ class BrowserManager:
                     # Blank page, navigate to login
                     await page.goto(Config.EVENTIM_LOGIN_URL, wait_until="domcontentloaded")
                     logger.info("Navigated to Eventim login page from blank page")
-                elif self._eventim_domain in current_url.lower():
+                elif self._is_eventim_domain(current_url):
                     # Already on Eventim, just bring to front
                     logger.info("Brought existing Eventim page to front (no reload)")
                 else:
@@ -183,6 +183,19 @@ class BrowserManager:
             return True
         except Exception:
             logger.exception("Failed to open login page")
+            return False
+    
+    def _is_eventim_domain(self, url: str) -> bool:
+        """Check if the given URL is on the Eventim domain.
+        
+        Uses proper URL parsing to avoid false positives from substring matching.
+        """
+        try:
+            parsed = urlparse(url)
+            # Compare domains without www prefix
+            current_domain = parsed.netloc.replace("www.", "").lower()
+            return current_domain == self._eventim_domain.lower()
+        except Exception:
             return False
     
     async def _apply_stealth(self, page: "Page") -> None:
