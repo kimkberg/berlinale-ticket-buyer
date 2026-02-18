@@ -87,8 +87,8 @@ class TimingConfig:
     
     # Page load waits - network and rendering delays
     # Networks are naturally variable, adding variance keeps human appearance
-    PAGE_LOAD_MEAN = 1200       # ms - typical page load expectation
-    PAGE_LOAD_STDDEV = 300      # ms - network variance (±25%)
+    PAGE_LOAD_MEAN = 300       # ms - typical page load expectation
+    PAGE_LOAD_STDDEV = 50      # ms - network variance (±25%)
     
     # UI interaction waits - for modals, banners, animations
     # Allows time for UI elements to dismiss and DOM to stabilize

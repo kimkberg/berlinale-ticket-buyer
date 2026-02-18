@@ -97,8 +97,8 @@ class HumanTiming:
         rng = _get_random()
         delay = rng.gauss(expected_ms, stddev)
 
-        # Keep reasonable bounds (at least 500ms, max 3x expected)
-        min_delay = max(500, expected_ms * 0.5)
+        # Keep reasonable bounds (at least 100ms, max 3x expected)
+        min_delay = max(100, expected_ms * 0.5)
         max_delay = expected_ms * 2.0
         delay = max(min_delay, min(max_delay, delay))
 
