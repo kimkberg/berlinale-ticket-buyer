@@ -8,7 +8,7 @@ This fork includes several enhancements and improvements to the original Berlina
 
 ### Timing and Precision Improvements
 - **Atomic Clock Synchronization**: Added NTP and HTTP fallback time synchronization for sub-second precision in ticket sale timing
-- **Refined Browser Automation Timing**: Updated timing configurations with more realistic human-like delays to avoid detection
+- **Refined Browser Automation Timing**: Updated timing configurations with more realistic human-like delays
 - **Improved Performance**: Optimized timing parameters for better speed and reliability
 
 ### Browser Session Management
